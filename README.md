@@ -44,6 +44,7 @@
 - You need to configure nginx to serve your site files instead of the default nginx files. Navigate to /etc/nginx/sites-available and edit the default file which is the config file.
 - In the default config file there should be a line that looks like root /var/www/html;, change it to root /var/www/html/4980_testsite;
 - Change permissions on the website files using commands "sudo chown -R www-data 4980_testsite" and "sudo chmod -R 750 4980_testsite" while in the /var/www/html directory.
+- Permissions need changing because the www-data is the user the nginx service uses, so that user needs to have the access to the files. You can still use sudo to make changes/view the files after the permissions have been changed. Or change the group and group permissions and add yourself to the group.
 - Restart and verify nginx is running after all thesee changes using "sudo systemctl restart nginx" and "sudo systemctl status nginx".
 - Test site functionality by putting the IP address of the instance in the address bar of a web browser.
 
