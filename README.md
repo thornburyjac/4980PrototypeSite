@@ -48,4 +48,11 @@
 - Restart and verify nginx is running after all thesee changes using "sudo systemctl restart nginx" and "sudo systemctl status nginx".
 - Test site functionality by putting the IP address of the instance in the address bar of a web browser.
 
-TODO CONFIGURE HTTPS
+# Part 3: Configure HTTPS
+- ssh into the system if your not already.
+- Setup the self signed cert using these commands...
+
+```text
+```
+
+use this site https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04
