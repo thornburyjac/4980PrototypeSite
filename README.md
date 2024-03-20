@@ -29,13 +29,13 @@
 
 ![ec2instances](https://github.com/thornburyjac/4980PrototypeSite/assets/111811243/db6bb591-38d7-4892-bb9a-aeffaa95e95a)
 
-- Use ssh to access the instance for configuration. This command will allow you to remotely configure the instance "ssh -i /home/jacob/.ssh/labsuser.pem ubuntu@44.205.210.252".
+- Use ssh to access the instance for configuration. This command will allow you to remotely configure the instance `ssh -i /home/jacob/.ssh/labsuser.pem ubuntu@44.205.210.252`.
 - Breakind down the above command, ssh is the protocol you are using for remote access. The -i option allows you to specify the "identity file" which is the corresponding private key to the public key on the instance you selected in Part 1. Ubuntu@IP is the username you are logging in as on the host system which is the IP you specify.
 - Once in the instance, verify the hostname changed and verify nginx is installed.
 
 ![sshintoinstance](https://github.com/thornburyjac/4980PrototypeSite/assets/111811243/40811991-4b41-4c4c-80c0-ed1c3f373278)
 
-- You can use sftp on your local machine to dump the site files onto the instance using command "sftp -i /home/jacob/.ssh/labsuser.pem ubuntu@44.205.210.252". Pretty much same breakdown as the ssh command.
+- You can use sftp on your local machine to dump the site files onto the instance using command `sftp -i /home/jacob/.ssh/labsuser.pem ubuntu@44.205.210.252`. Pretty much same breakdown as the ssh command.
 - Once in an sftp prompt, use the put <filename> command to "put" the file on the remote machine. Use pwd and lpwd to view remote and local working directory.
 
 ![sftp](https://github.com/thornburyjac/4980PrototypeSite/assets/111811243/98e0c320-426a-4082-b3dc-6b9938924ede)
@@ -49,10 +49,42 @@
 - Test site functionality by putting the IP address of the instance in the address bar of a web browser.
 
 # Part 3: Configure HTTPS
+
+Based on https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-18-04
+
 - ssh into the system if your not already.
-- Setup the self signed cert using these commands...
+- Setup the self signed cert using this command `sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt`
+- So that command creates all the necessary files and puts them in the default folders nginx sets up for ssl stuff.
+- Now we need to setup the nginx config file, stored in /etc/nginx/sites-available/ a file called default.
+- Open that file, remove everything and add...
 
 ```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;  # Default server for requests without a Host header
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+    location / {
+        root /var/www/html/4980_testsite;
+        index index.html;
+    }
+}
 ```
+Breaking this file down, we have 2 server blocks, and a location block. The first server block is for 
+
+# TODO continue making documentation.
 
 use this site https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04
