@@ -1,6 +1,8 @@
 # CONTENTS
 WebsiteFiles contains the html, css, and images that go with the website
+
 YAML contains the yaml file you will use to deploy the instance
+
 This README walks you through the process to deploy the instance and configure it to serve the prototype site.
 
 # Part 1: Using AWS CloudFormation to deploy the instance
