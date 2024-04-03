@@ -110,3 +110,7 @@ Breaking this file down, we have 2 server blocks, and a location block. The firs
 ![selfsigned](https://github.com/thornburyjac/4980PrototypeSite/assets/111811243/2929ae6e-ebf4-475a-9e26-19609fdbb2b5)
 
 - The current version of the site allows you to view the test images, view the cropped images, and download the test and cropped images.
+
+# Part 4: Changing the website and server to authenticate "Obi Wan Kenobi"
+
+- 
