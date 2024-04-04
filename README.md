@@ -113,4 +113,6 @@ Breaking this file down, we have 2 server blocks, and a location block. The firs
 
 # Part 4: Changing the website and server to authenticate "Obi Wan Kenobi"
 
-- 
+- First, I am going to create a new site. Mostly copy pasting but since I want to make a landing/login page it just makes sense to me to start fresh.
+- I will include the 7z archive of website2.7z in the WebsiteFiles directory.
+- The new sites landing page will be a login page, where the shortened Leia message from A New Hope plays. Then there will be a obiwan page where the authenticated user has access to full site functionality and the full message from A New Hope plays.
