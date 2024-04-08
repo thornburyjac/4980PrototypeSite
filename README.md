@@ -211,3 +211,4 @@ Confirmed it was working, I was able to login with the username "username" and t
 
 - It is prompting right when going to the site which I do not want, will need to change the config file.
 - Pending further testing for multifactor authentication requirement.
+- Current webserv IP is `34.228.98.223`
