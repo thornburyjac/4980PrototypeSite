@@ -118,3 +118,96 @@ Breaking this file down, we have 2 server blocks, and a location block. The firs
 - The new sites landing page will be a login page, where the shortened Leia message from A New Hope plays. Then there will be a obiwan page where the authenticated user has access to full site functionality and the full message from A New Hope plays.
 - After putting together the new site, there seems to be an issue with the web server.
 - Deleted the stack and remade the stack. Oh well, this way we start fresh for this new prototype.
+- Accessed with `ssh -i /home/jacob/.ssh/labsuser.pem ubuntu@34.228.98.223` and used `sftp -i /home/jacob/.ssh/labsuser.pem ubuntu@34.228.98.223` to put the new site directory on there.
+- Installed 7z with `sudo apt install p7zip-full`
+- Unzipped new site directory with `7z x TestSite2.7z`
+- Generated cert stuff with `sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt`
+- Opened /etc/nginx/sites-available/default with vim, removed everything with :%d, and then added my config file mentioned earlier in this doc.
+- Moved my site files to nginx html directory with `sudo mv TestSite2 /var/www/html/`
+- Edited permissions on that directory with `sudo chown -R www-data TestSite2` and `sudo chmod -R 750 TestSite2`
+- Restarted nginx with `sudo systemctl restart nginx.service`
+- Error, I forgot to change the location in the config file from root /var/www/html/4980_testsite; to root /var/www/html/Test;
+- Generated nginx password file with `sudo htpasswd -c /etc/nginx/.htpasswd username`
+- Error, need to install apache2 utils with `sudo apt install apache2-utils`
+- Tried again. Ran `sudo htpasswd -c /etc/nginx/.htpasswd username`. I was prompted to create a password for the account "username"
+- Created the password.
+- Moving on to editing the config file.
+
+Config file
+```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+    location / {
+        root /var/www/html/TestSite2;
+        index index.html;
+    }
+
+    # Location blocks for restricting access to specific paths
+    location /obiwan.html {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /scripts {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /styles {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /images {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /cropped.html {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /base.html {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+}
+```
+
+- Checked syntax with `sudo nginx -t`
+- Restarted nginx service.
+
+Confirmed it was working, I was able to login with the username "username" and the password I created
+![image](https://github.com/thornburyjac/4980PrototypeSite/assets/111811243/739f6225-0f5e-4a49-b52c-8c973bcdd413)
+
+- It is prompting right when going to the site which I do not want, will need to change the config file.
+- Pending further testing for multifactor authentication requirement.
