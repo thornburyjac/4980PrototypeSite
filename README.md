@@ -71,6 +71,158 @@ I have not been working on this project all Summer, so I will need to setup my e
 - Ran `sudo apt-get update` to ensure apt was up to date.
 - Ran `sudo apt-get install p7zip-full` to install 7z on webserv.
 - Ran `7z x TestSite2.7z` to extract website files onto the machine.
+- Ran `sudo mv TestSite2 /var/www/html/`
+- Navigated to /var/www/html/
+- Ran `sudo chown -R www-data TestSite2`
+- Ran `sudo chmod -R 750 TestSite2/`
+- Ran `sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt`
+- Navigated to /etc/nginx/sites-available
+- Removed the default config file, replaced it with my own...
+
+```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+    location / {
+        root /var/www/html/4980_testsite;
+        index index.html;
+    }
+}
+```
+
+- Ran `sudo systemctl restart nginx.service`
+- Ran `sudo systemctl status nginx.service`
+- Service appears to be running correctly.
+- From my browser, navigated to https://44.207.127.108/
+- Nginx not found error.
+- I think the issue is I forgot to change the default location to look for index in the config file, in the one above it is set to look at 4980_testsite where in this case it is /var/www/html/TestSite2
+- Made the alteration to the config file.
+
+```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+    location / {
+        root /var/www/html/TestSite2;
+        index index.html;
+    }
+}
+```
+
+- Restarted Nginx.service again.
+- From my browser, navigated to https://44.207.127.108/ and confirmed I was able to access the site using HTTPS.
+- Confirmed HTTP redirected to HTTPS.
+- Installed apache utils which is needed for nginx password auth using `sudo apt install apache2-utils`
+- Ran `sudo htpasswd -c /etc/nginx/.htpasswd obiwan` which should create the necessary file for nginx simple auth, and create the user obiwan, and then prompt me to create a password.
+- Added user successfully, see landing page for password hint.
+- Navigated to /etc/nginx/sites-available
+- Using :%d in vim to remove the contents of default.
+- Pasted the new config file from the nginx simple authentication part of the README_old.md file.
+- The config file is now...
+
+```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+    location / {
+        root /var/www/html/TestSite2;
+        index index.html;
+    }
+
+    # Location blocks for restricting access to specific paths
+    location /obiwan.html {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /scripts {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /styles {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /images {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /cropped.html {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+
+    location /base.html {
+        root /var/www/html/TestSite2;
+        index index.html;
+        auth_basic "Restricted Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+    }
+}
+```
+
+- Restarted nginx to confirm functionality.
+- Now I need to turn off basic auth on the landing page.
+- Per some online articles, if I add this line `auth_basic          off;` to the config file in the location blocks I dont want authenticating that might work.
+- I tried a few different ways, I think I need to restructure the website. All the html files, like index.html, obiwan.html, etc are in the root directory. Maybe I need to restructure the site to have those in other folders.
 
 ### 
 
