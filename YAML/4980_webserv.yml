@@ -87,7 +87,11 @@ Resources:
         - IpProtocol: tcp
           FromPort: '22'
           ToPort: '22'
-          CidrIp: 50.5.136.184/32 # SSH allowed from my public IP
+          CidrIp: 50.5.136.184/32 # SSH allowed from Jacob's personal IP
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 167.248.152.55/32 # SSH allowed from Matt's personal IP
         - IpProtocol: tcp
           FromPort: '80'
           ToPort: '80'
