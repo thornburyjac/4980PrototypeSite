@@ -223,6 +223,7 @@ server {
 - Now I need to turn off basic auth on the landing page.
 - Per some online articles, if I add this line `auth_basic          off;` to the config file in the location blocks I dont want authenticating that might work.
 - I tried a few different ways, I think I need to restructure the website. All the html files, like index.html, obiwan.html, etc are in the root directory. Maybe I need to restructure the site to have those in other folders.
+- Look into this documentation [3]
 
 ### 
 
@@ -235,3 +236,6 @@ https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-http-basi
 
 [2] AWS
 https://us-east-1.console.aws.amazon.com/console/home?region=us-east-1
+
+[3] nginx how to process request
+https://nginx.org/en/docs/http/request_processing.html
