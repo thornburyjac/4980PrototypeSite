@@ -223,10 +223,49 @@ server {
 - Now I need to turn off basic auth on the landing page.
 - Per some online articles, if I add this line `auth_basic          off;` to the config file in the location blocks I dont want authenticating that might work.
 - I tried a few different ways, I think I need to restructure the website. All the html files, like index.html, obiwan.html, etc are in the root directory. Maybe I need to restructure the site to have those in other folders.
+- After much restructuring, and many nginx config files, I think I have landed on the configuration that works.
+- Uploading 1FAwebsitefiles to the /WebsiteFiles directory. This is the directory structure that so far is working with the nginx config file.
+- See below for the nginx config file that is working...
+
+```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+        location / {
+                root /var/www/html;
+                try_files $uri $uri/ =404;
+        }
+        location /authreq {
+                auth_basic "Restricted";
+                auth_basic_user_file /etc/nginx/.htpasswd;
+                root /var/www/html;
+                index obiwan.html;
+        }
+}
+```
+
+- Remember this config file will only work if the self signed certificate is generated and in the right place for HTTPS. And the htpasswd file is generated, in the right place, and has a user/password setup.
 
 ### 
 
 ## Notes/lessons learned
+
+- Putting the root and index directive in the config file before the auth_basic directive means the website will allow you to access that section of the website without authentication.
 
 ## References
 
