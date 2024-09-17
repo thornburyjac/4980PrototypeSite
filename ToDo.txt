@@ -1,0 +1,12 @@
+n dockerfile, 
+
+1. Add certificate and Key for HTTPS to work
+
+2. In the etc/nginx/sites available
+delete old nginx config
+replace with new nginx.conf
+
+3. enerate simple password file
+
+4. add obiwan the user and password
+
