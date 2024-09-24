@@ -298,6 +298,35 @@ server {
 
 - Remember this config file will only work if the self signed certificate is generated and in the right place for HTTPS. And the htpasswd file is generated, in the right place, and has a user/password setup.
 
+### Implementing multi-factor authentication using client side certificates documentation
+- Following reference [5], I will try to implement multi-factor authentication using client side certificates.
+- Created directory /home/ubuntu/testclientcert
+- Ran command `openssl genrsa -des3 -out ca4980.key 4096`, used the same passphrase the site uses.
+- Ran command `openssl req -new -x509 -days 365 -key ca4980.key -out ca4980.crt`, entered passphrase for the ca4980.key, and left every cert field blank.
+- Ran command `openssl genrsa -des3 -out user.key 4096`, entered same passphrase I used for the site.
+- Ran command `openssl req -new -key user.key -out user.csr`, entered the passphrase for the user.key. Left every cert field blank.
+- Remember, look at [5] for descriptions of what these commands are doing.
+- Ran command `openssl x509 -req -days 365 -in user.csr -CA ca4980.crt -CAkey ca4980.key -set_serial 01 -out user.crt`
+- Entered all the passphrases it needed, and the passphrase I entered for this file is the same as for the website.
+- As I understand it, this is the file that would need to be added to the client machine that it would use for authentication.
+- Navigated to the nginx config file, and added the line `ssl_client_certificate /home/ubuntu/testclientcert/ca4980.crt;` to the server block.
+- Transferred pfx file to local machine.
+- Imported into firefox by navigating to settings > privacy and security > scrolling down and selecting view certificates > importing to the your certificates tab.
+- Restarted nginx service on my webserv to be safe.
+- Navigated to site in incognito tab to ensure no cookies would cause problems.
+- I was able to access the site, but so was someone who did not have the certificate.
+- Added `ssl_verify_client on;` line to the server block in the config file.
+- Double clicked on the .pfx file I put on my local machines desktop to run through the import wizard.
+- Ensured the cert was imported in the same place I put it last in Firefox.
+- Tried to access the site again in incognito.
+- Received error...
+
+![image](https://github.com/user-attachments/assets/89119632-e93f-4a4b-9198-40943aec8100)
+
+- I was prompted for the cert though.
+- Tried in a regular tab.
+- Same error, need to work the error now as at least now it is prompting for the certificate.
+
 ### Notes/lessons learned
 
 - Putting the root and index directive in the config file before the auth_basic directive means the website will allow you to access that section of the website without authentication.
@@ -315,3 +344,6 @@ https://nginx.org/en/docs/http/request_processing.html
 
 [4] video on basic auth
 https://www.youtube.com/watch?v=_zoDkXyXrx4
+
+[5] Article I used to try client side certs the first time around
+https://fardog.io/blog/2017/12/30/client-side-certificate-authentication-with-nginx/
