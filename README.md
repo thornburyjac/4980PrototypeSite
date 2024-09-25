@@ -327,6 +327,25 @@ server {
 - Tried in a regular tab.
 - Same error, need to work the error now as at least now it is prompting for the certificate.
 
+### Implementing multi-factor authentication using client side certificates documentation again
+- Perhaps I made a mistake in one of the many steps it took to setup the cert auth, I am trying again this time using another guide [6]
+- Navigated to /home/ubuntu/testclientcert
+- Changed permissions on this directory based on [6].
+- Ran command `openssl genrsa -des3 -out myca.key 4096` and used the same passphrase I use for everything related to this project.
+- Ran command `openssl req -new -x509 -days 3650 -key myca.key -out myca.crt` and entered the passphrase for myca.key. Left everything in the cert blank.
+- Ran command `openssl genrsa -des3 -out testuser.key 2048` and set default passphrase.
+- Ran command `openssl req -new -key testuser.key -out testuser.csr`, entered passphrase for testuser.key, and left every cert detail field blank.
+- Ran command `openssl x509 -req -days 365 -in testuser.csr -CA myca.crt -CAkey myca.key -set_serial 01 -out testuser.crt`
+- Ran command `openssl pkcs12 -export -out testuser.pfx -inkey testuser.key -in testuser.crt -certfile myca.crt`
+- Used sftp to transfer the pfx file to my machine.
+- Ran through cert install wizard on my machine.
+- Added cert in firefox settings.
+- HUZZAH
+- Tried again in incognito window.
+- HIP HIP, HUZZAH.
+- So this above process should work, use [6] for reference.
+- Now all that is left is to figure out how to have it only prompt for the authenticated part of the site and not the whole site.
+
 ### Notes/lessons learned
 
 - Putting the root and index directive in the config file before the auth_basic directive means the website will allow you to access that section of the website without authentication.
@@ -347,3 +366,6 @@ https://www.youtube.com/watch?v=_zoDkXyXrx4
 
 [5] Article I used to try client side certs the first time around
 https://fardog.io/blog/2017/12/30/client-side-certificate-authentication-with-nginx/
+
+[6] Another guide on client side certs
+https://www.ssltrust.com/help/setup-guides/client-certificate-authentication
