@@ -389,6 +389,7 @@ server {
 - When you go to the restricted portion of the site, the URL is https://www.4980bullshit.com/authreq/obiwan.html
 - So could I set multiple server blocks in the nginx config file to correspond with those different URLS or parts of the site?
 - [7] might be useful, forum on multiple server blocks for same IP.
+- Perhaps having the landing page be served up on port 443, but the restricted site be served up on some arbitrary port. That way I can have different server blocks for the same IP, just one server block for each port.
 
 ### Notes/lessons learned
 
