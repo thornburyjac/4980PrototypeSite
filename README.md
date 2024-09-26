@@ -344,6 +344,44 @@ server {
 - Tried again in incognito window.
 - HIP HIP, HUZZAH.
 - So this above process should work, use [6] for reference.
+
+Here is what the config file looks like...
+```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_client_certificate /home/ubuntu/testclientcert/testuser.crt;
+    ssl_verify_client on;
+
+    # Other SSL configuration directives can go here
+
+        location / {
+                root /var/www/html;
+                try_files $uri $uri/ =404;
+        }
+        location /authreq {
+                auth_basic "Restricted";
+                auth_basic_user_file /etc/nginx/.htpasswd;
+                root /var/www/html;
+                index obiwan.html;
+        }
+}
+
+```
+
+- Also I took a snapshot of the EC2 instance as it is right now snap-0abd9eb859bf66b65 in AWS.
 - Now all that is left is to figure out how to have it only prompt for the authenticated part of the site and not the whole site.
 
 ### Notes/lessons learned
