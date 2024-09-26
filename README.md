@@ -388,6 +388,7 @@ server {
 - Set an entry on my Windows machine hosts file so the EC2 instance IP corresponds with the domain name www.4980bullshit.com
 - When you go to the restricted portion of the site, the URL is https://www.4980bullshit.com/authreq/obiwan.html
 - So could I set multiple server blocks in the nginx config file to correspond with those different URLS or parts of the site?
+- [7] might be useful, forum on multiple server blocks for same IP.
 
 ### Notes/lessons learned
 
@@ -412,3 +413,6 @@ https://fardog.io/blog/2017/12/30/client-side-certificate-authentication-with-ng
 
 [6] Another guide on client side certs
 https://www.ssltrust.com/help/setup-guides/client-certificate-authentication
+
+[7] Multiple server blocks
+https://stackoverflow.com/questions/11773544/nginx-different-domains-on-same-ip
