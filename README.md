@@ -384,6 +384,11 @@ server {
 - Also I took a snapshot of the EC2 instance as it is right now snap-0abd9eb859bf66b65 in AWS.
 - Now all that is left is to figure out how to have it only prompt for the authenticated part of the site and not the whole site.
 
+### Fixing multi-factor authentication to only prompt on the restricted portion of the site.
+- Set an entry on my Windows machine hosts file so the EC2 instance IP corresponds with the domain name www.4980bullshit.com
+- When you go to the restricted portion of the site, the URL is https://www.4980bullshit.com/authreq/obiwan.html
+- So could I set multiple server blocks in the nginx config file to correspond with those different URLS or parts of the site?
+
 ### Notes/lessons learned
 
 - Putting the root and index directive in the config file before the auth_basic directive means the website will allow you to access that section of the website without authentication.
