@@ -453,6 +453,54 @@ server {
 - Now any user can reach the landing page, when they select the link they are prompted for mfa, and when they correctly authenticate the site css works.
 - Now I just need to restructure the site one more time, basically lock everything but the landing page in the authreq folder, including the images, and update all the links in all the html documents.
 
+this is what the config file looks like
+```text
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+        location / {
+                root /var/www/html;
+                try_files $uri $uri/ =404;
+        }
+}
+
+server {
+    listen 444 ssl;
+    listen [::]:444 ssl;
+    server_name _;
+
+    root /var/www/html/authreq;
+
+    index obiwan.html;
+
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_client_certificate /home/ubuntu/testclientcert/testuser.crt;
+    ssl_verify_client on;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+}
+```
+
+- And the site structure is all changed so I need to restructure it, update all the links, then I will add a new version in the websitefiles directory in this repo.
+
 ### Notes/lessons learned
 
 - Putting the root and index directive in the config file before the auth_basic directive means the website will allow you to access that section of the website without authentication.
