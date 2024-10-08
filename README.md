@@ -500,10 +500,11 @@ server {
 ```
 
 - And the site structure is all changed so I need to restructure it, update all the links, then I will add a new version in the websitefiles directory in this repo.
+- I restructured the site, and Matt is finishing his container for the 1fa version of the site.
+- At this point he has a container running that serves up the working 1fa version of the site. He also has a folder on his local machine linked to the container, so we can dump images into that folder and they will populate in the container in the /images folder.
+- At this juncture the next step is providing Matt with the files for the 2fa version of the site, and further cementing my understanding of how the actual test will go. The site will be up, with no images. After we receive the images we will put them in the linked folder with the container and those will appear on the site after a refresh. So I need to figure out a naming convention for the images so I can properly link them, and I need to figure out how to transfer the images from the computer that receives them to the EC2 instance.
 
 ### Notes/lessons learned
-
-- Putting the root and index directive in the config file before the auth_basic directive means the website will allow you to access that section of the website without authentication.
 
 ## References
 
