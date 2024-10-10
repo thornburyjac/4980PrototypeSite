@@ -504,6 +504,49 @@ server {
 - At this point he has a container running that serves up the working 1fa version of the site. He also has a folder on his local machine linked to the container, so we can dump images into that folder and they will populate in the container in the /images folder.
 - At this juncture the next step is providing Matt with the files for the 2fa version of the site, and further cementing my understanding of how the actual test will go. The site will be up, with no images. After we receive the images we will put them in the linked folder with the container and those will appear on the site after a refresh. So I need to figure out a naming convention for the images so I can properly link them, and I need to figure out how to transfer the images from the computer that receives them to the EC2 instance.
 
+### Setting up a script to transfer the files to the EC2 instance
+
+- Using [8] and chatgpt, I created this script...
+
+```text
+#!/bin/bash
+
+sftp -oIdentityFile=/home/thornbja/.ssh/prototype4980key.pem ubuntu@44.207.127.108 <<EOF
+put test1
+put test2
+put test3
+exit
+EOF
+
+```
+
+- And it worked!
+
+![image](https://github.com/user-attachments/assets/0230eee6-8574-4934-9266-c4124187bda6)
+
+- I verified my three test files appeared on the ec2 instance.
+- I probably want to make the script more complex by just having a for loop iterate through the directory and take all the files and put them where they need to go.
+- I also need to make sure the script on my local machine has permissions to put the files where they need to go.
+
+```text
+#!/bin/bash
+
+sftp -oIdentityFile=/home/thornbja/.ssh/prototype4980key.pem ubuntu@44.207.127.108 <<EOF
+put test1 /var/www/html/authreq/images/baseimage
+put test2 /var/www/html/authreq/images/baseimage
+put test3 /var/www/html/authreq/images/baseimage
+exit
+EOF
+
+```
+
+- Tried this script and got permission denied errors.
+
+![image](https://github.com/user-attachments/assets/214e00e8-1610-4d21-9873-de0200242341)
+
+
+- I need to give the ubuntu user more rights to that location.
+
 ### Notes/lessons learned
 
 ## References
@@ -528,3 +571,7 @@ https://www.ssltrust.com/help/setup-guides/client-certificate-authentication
 
 [7] Multiple server blocks
 https://stackoverflow.com/questions/11773544/nginx-different-domains-on-same-ip
+
+[8] script to transfer files to ec2 instance research
+https://superuser.com/questions/1566901/how-do-i-connect-to-sftp-with-provided-ssh-key
+
