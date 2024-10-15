@@ -546,6 +546,7 @@ EOF
 
 
 - I need to give the ubuntu user more rights to that location.
+- Ran `sudo chgrp -R www-data html` and `sudo chmod -R 770 html`
 
 ### Notes/lessons learned
 
