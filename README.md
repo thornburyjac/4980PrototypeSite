@@ -547,6 +547,38 @@ EOF
 
 - I need to give the ubuntu user more rights to that location.
 - Ran `sudo chgrp -R www-data html` and `sudo chmod -R 770 html`
+- Ran `sudo usermod -a -G www-data ubuntu`
+- The ubuntu user should be in the www-data group now, and the www-data group members should have access to all the files for the website. Now when I run scrip it should not get a permissions error.
+- Ran the script, and confirmed the test files showed up in /var/www/html/authreq/images/baseimage
+
+
+### Installing docker on the ubuntu instance in preparation to test the containerized version of the site/service
+- Using [9] as reference
+- Ran all these commands...
+
+```text
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
+
+- No errors.
+- Then ran all this...
+
+```text
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+```
+
+- No errors.
+- Ran command `sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin`
+- Should be good? Ran `sudo docker run hello-world` to test
+- Confirmed Docker appears to be working correctly.
 
 ### Notes/lessons learned
 
@@ -575,4 +607,8 @@ https://stackoverflow.com/questions/11773544/nginx-different-domains-on-same-ip
 
 [8] script to transfer files to ec2 instance research
 https://superuser.com/questions/1566901/how-do-i-connect-to-sftp-with-provided-ssh-key
+
+[9] installing docker on ubuntu
+https://docs.docker.com/engine/install/ubuntu/
+
 
