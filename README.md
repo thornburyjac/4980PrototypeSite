@@ -550,7 +550,33 @@ EOF
 - Ran `sudo usermod -a -G www-data ubuntu`
 - The ubuntu user should be in the www-data group now, and the www-data group members should have access to all the files for the website. Now when I run scrip it should not get a permissions error.
 - Ran the script, and confirmed the test files showed up in /var/www/html/authreq/images/baseimage
+- Need to setup the script to get all the files needed from the directory, not sure if we even need a for loop.
+- Made this script and ran it, see output...
 
+```text
+thornbja@lappy:~/testaroo$ ./scrip2
+Connected to 44.207.127.108.
+sftp> put -r test* /var/www/html/authreq/images/baseimage
+Uploading test1 to /var/www/html/authreq/images/baseimage/test1
+test1                                                                                                                       100%    0     0.0KB/s   00:00
+Uploading test2 to /var/www/html/authreq/images/baseimage/test2
+test2                                                                                                                       100%    0     0.0KB/s   00:00
+Uploading test3 to /var/www/html/authreq/images/baseimage/test3
+test3                                                                                                                       100%    0     0.0KB/s   00:00
+sftp> exit
+thornbja@lappy:~/testaroo$ cat scrip2
+#!/bin/bash
+
+sftp -oIdentityFile=/home/thornbja/.ssh/prototype4980key.pem ubuntu@44.207.127.108 <<EOF
+put -r test* /var/www/html/authreq/images/baseimage
+exit
+EOF
+
+thornbja@lappy:~/testaroo$
+```
+
+- Confirmed the files showed up.
+- So, the raspberry pi will transmit the files to a laptop. That laptop will then have all the images with specific names, ds## for example like ds01 and ds02. The script will then use the put -r ds** option to put all files starting with ds to the remote directory.
 
 ### Installing docker on the ubuntu instance in preparation to test the containerized version of the site/service
 - Using [9] as reference
