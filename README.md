@@ -503,7 +503,186 @@ server {
 
 ### Notes/lessons learned
 
-- Putting the root and index directive in the config file before the auth_basic directive means the website will allow you to access that section of the website without authentication.
+
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_client_certificate /home/ubuntu/testclientcert/testuser.crt;
+    ssl_verify_client on;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+}
+```
+
+- Now when you go to the site, everyone can access the homepage, but hitting the link at the bottom prompts for the mfa.
+- I am able to authenticate but this is what I get...
+
+![image](https://github.com/user-attachments/assets/9aff03c3-a288-4143-be94-b41090f89e34)
+
+- Checked the error.log with `sudo cat /var/log/nginx/error.log`
+- See this line `2024/10/01 12:38:23 [error] 21963#21963: *5 open() "/var/www/html/authreq/styles/obiwan-style.css" failed (2: No such file or directory), client: 130.108.104.139, server: _, request: "GET /styles/obiwan-style.css HTTP/1.1", host: "44.207.127.108:444", referrer: "https://44.207.127.108:444/"`
+- As you can see it is looking for /var/www/html/authreq/styles/obiwan-style.css in the wrong folder since in the config file I specified root in both server blocks. The correct css path should be /var/www/html/styles/obiwan-style.css
+- Now I get a default nginx forbidden error.
+- Checked error log again.
+- Decided to keep the config file as is, and just move the css to where nginx is looking, basically create a new directory.
+- Created a new styles directory and created all the corresponding styles files in /var/www/html/authreq/styles
+- Now any user can reach the landing page, when they select the link they are prompted for mfa, and when they correctly authenticate the site css works.
+- Now I just need to restructure the site one more time, basically lock everything but the landing page in the authreq folder, including the images, and update all the links in all the html documents.
+
+this is what the config file looks like
+```text
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+        location / {
+                root /var/www/html;
+                try_files $uri $uri/ =404;
+        }
+}
+
+server {
+    listen 444 ssl;
+    listen [::]:444 ssl;
+    server_name _;
+
+    root /var/www/html/authreq;
+
+    index obiwan.html;
+
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_client_certificate /home/ubuntu/testclientcert/testuser.crt;
+    ssl_verify_client on;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+}
+```
+
+- And the site structure is all changed so I need to restructure it, update all the links, then I will add a new version in the websitefiles directory in this repo.
+- I restructured the site, and Matt is finishing his container for the 1fa version of the site.
+- At this point he has a container running that serves up the working 1fa version of the site. He also has a folder on his local machine linked to the container, so we can dump images into that folder and they will populate in the container in the /images folder.
+- At this juncture the next step is providing Matt with the files for the 2fa version of the site, and further cementing my understanding of how the actual test will go. The site will be up, with no images. After we receive the images we will put them in the linked folder with the container and those will appear on the site after a refresh. So I need to figure out a naming convention for the images so I can properly link them, and I need to figure out how to transfer the images from the computer that receives them to the EC2 instance.
+
+### Setting up a script to transfer the files to the EC2 instance
+
+- Using [8] and chatgpt, I created this script...
+
+```text
+#!/bin/bash
+
+sftp -oIdentityFile=/home/thornbja/.ssh/prototype4980key.pem ubuntu@44.207.127.108 <<EOF
+put test1
+put test2
+put test3
+exit
+EOF
+
+```
+
+- And it worked!
+
+![image](https://github.com/user-attachments/assets/0230eee6-8574-4934-9266-c4124187bda6)
+
+- I verified my three test files appeared on the ec2 instance.
+- I probably want to make the script more complex by just having a for loop iterate through the directory and take all the files and put them where they need to go.
+- I also need to make sure the script on my local machine has permissions to put the files where they need to go.
+
+```text
+#!/bin/bash
+
+sftp -oIdentityFile=/home/thornbja/.ssh/prototype4980key.pem ubuntu@44.207.127.108 <<EOF
+put test1 /var/www/html/authreq/images/baseimage
+put test2 /var/www/html/authreq/images/baseimage
+put test3 /var/www/html/authreq/images/baseimage
+exit
+EOF
+
+```
+
+- Tried this script and got permission denied errors.
+
+![image](https://github.com/user-attachments/assets/214e00e8-1610-4d21-9873-de0200242341)
+
+
+- I need to give the ubuntu user more rights to that location.
+- Ran `sudo chgrp -R www-data html` and `sudo chmod -R 770 html`
+- Ran `sudo usermod -a -G www-data ubuntu`
+- The ubuntu user should be in the www-data group now, and the www-data group members should have access to all the files for the website. Now when I run scrip it should not get a permissions error.
+- Ran the script, and confirmed the test files showed up in /var/www/html/authreq/images/baseimage
+- Need to setup the script to get all the files needed from the directory, not sure if we even need a for loop.
+- Made this script and ran it, see output...
+
+```text
+thornbja@lappy:~/testaroo$ ./scrip2
+Connected to 44.207.127.108.
+sftp> put -r test* /var/www/html/authreq/images/baseimage
+Uploading test1 to /var/www/html/authreq/images/baseimage/test1
+test1                                                                                                                       100%    0     0.0KB/s   00:00
+Uploading test2 to /var/www/html/authreq/images/baseimage/test2
+test2                                                                                                                       100%    0     0.0KB/s   00:00
+Uploading test3 to /var/www/html/authreq/images/baseimage/test3
+test3                                                                                                                       100%    0     0.0KB/s   00:00
+sftp> exit
+thornbja@lappy:~/testaroo$ cat scrip2
+#!/bin/bash
+
+sftp -oIdentityFile=/home/thornbja/.ssh/prototype4980key.pem ubuntu@44.207.127.108 <<EOF
+put -r test* /var/www/html/authreq/images/baseimage
+exit
+EOF
+
+thornbja@lappy:~/testaroo$
+```
+
+- Confirmed the files showed up.
+- So, the raspberry pi will transmit the files to a laptop. That laptop will then have all the images with specific names, ds## for example like ds01 and ds02. The script will then use the put -r ds** option to put all files starting with ds to the remote directory.
+
+### Installing docker on the ubuntu instance in preparation to test the containerized version of the site/service
+- Using [9] as reference
+- Ran all these commands...
+
+```text
+sudo apt-get update
+sudo apt-get install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
+
+- No errors.
+- Then ran all this...
+
+```text
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+```
+
+- No errors.
+- Ran command `sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin`
+- Should be good? Ran `sudo docker run hello-world` to test
+- Confirmed Docker appears to be working correctly.
+
+### Notes/lessons learned
 
 ## References
 
@@ -528,3 +707,8 @@ https://www.ssltrust.com/help/setup-guides/client-certificate-authentication
 [7] Multiple server blocks
 https://stackoverflow.com/questions/11773544/nginx-different-domains-on-same-ip
 
+[8] script to transfer files to ec2 instance research
+https://superuser.com/questions/1566901/how-do-i-connect-to-sftp-with-provided-ssh-key
+
+[9] installing docker on ubuntu
+https://docs.docker.com/engine/install/ubuntu/
