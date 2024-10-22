@@ -1,8 +1,7 @@
 body {
-    width: 100%;
+    background-color: rgb(195, 232, 245);
 }
 .grid {
-    width: 95%;
     display: grid;
     grid-template-areas: 
     "b"
@@ -10,6 +9,11 @@ body {
     "v"
     "v"
     "l";
+    background-color: lightblue;
+    gap: 10px;
+    padding: 50px;
+    border: 1px solid black;
+    border-radius: 5px;
 }
 .banner {
     place-self: center;
@@ -26,4 +30,20 @@ body {
 .link {
     place-self: center;
     grid-area: l;
+    display: block;
+    padding: 10px;
+    text-align: center;
+    text-decoration: none;
+    border: none;
+    color: black;
+    background-color: rgb(195, 232, 245);
+    border: 1px solid black;
+    border-radius: 5px;
+}
+.link:hover {
+    background-color: aqua;
+}
+iframe {
+    border: 1px solid black;
+    border-radius: 5px;
 }

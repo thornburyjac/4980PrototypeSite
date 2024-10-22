@@ -500,6 +500,82 @@ server {
 ```
 
 - And the site structure is all changed so I need to restructure it, update all the links, then I will add a new version in the websitefiles directory in this repo.
+
+### Notes/lessons learned
+
+
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_client_certificate /home/ubuntu/testclientcert/testuser.crt;
+    ssl_verify_client on;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+}
+```
+
+- Now when you go to the site, everyone can access the homepage, but hitting the link at the bottom prompts for the mfa.
+- I am able to authenticate but this is what I get...
+
+![image](https://github.com/user-attachments/assets/9aff03c3-a288-4143-be94-b41090f89e34)
+
+- Checked the error.log with `sudo cat /var/log/nginx/error.log`
+- See this line `2024/10/01 12:38:23 [error] 21963#21963: *5 open() "/var/www/html/authreq/styles/obiwan-style.css" failed (2: No such file or directory), client: 130.108.104.139, server: _, request: "GET /styles/obiwan-style.css HTTP/1.1", host: "44.207.127.108:444", referrer: "https://44.207.127.108:444/"`
+- As you can see it is looking for /var/www/html/authreq/styles/obiwan-style.css in the wrong folder since in the config file I specified root in both server blocks. The correct css path should be /var/www/html/styles/obiwan-style.css
+- Now I get a default nginx forbidden error.
+- Checked error log again.
+- Decided to keep the config file as is, and just move the css to where nginx is looking, basically create a new directory.
+- Created a new styles directory and created all the corresponding styles files in /var/www/html/authreq/styles
+- Now any user can reach the landing page, when they select the link they are prompted for mfa, and when they correctly authenticate the site css works.
+- Now I just need to restructure the site one more time, basically lock everything but the landing page in the authreq folder, including the images, and update all the links in all the html documents.
+
+this is what the config file looks like
+```text
+
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+        location / {
+                root /var/www/html;
+                try_files $uri $uri/ =404;
+        }
+}
+
+server {
+    listen 444 ssl;
+    listen [::]:444 ssl;
+    server_name _;
+
+    root /var/www/html/authreq;
+
+    index obiwan.html;
+
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_client_certificate /home/ubuntu/testclientcert/testuser.crt;
+    ssl_verify_client on;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+}
+```
+
+- And the site structure is all changed so I need to restructure it, update all the links, then I will add a new version in the websitefiles directory in this repo.
 - I restructured the site, and Matt is finishing his container for the 1fa version of the site.
 - At this point he has a container running that serves up the working 1fa version of the site. He also has a folder on his local machine linked to the container, so we can dump images into that folder and they will populate in the container in the /images folder.
 - At this juncture the next step is providing Matt with the files for the 2fa version of the site, and further cementing my understanding of how the actual test will go. The site will be up, with no images. After we receive the images we will put them in the linked folder with the container and those will appear on the site after a refresh. So I need to figure out a naming convention for the images so I can properly link them, and I need to figure out how to transfer the images from the computer that receives them to the EC2 instance.
@@ -636,5 +712,3 @@ https://superuser.com/questions/1566901/how-do-i-connect-to-sftp-with-provided-s
 
 [9] installing docker on ubuntu
 https://docs.docker.com/engine/install/ubuntu/
-
-
