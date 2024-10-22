@@ -682,6 +682,54 @@ sudo apt-get update
 - Should be good? Ran `sudo docker run hello-world` to test
 - Confirmed Docker appears to be working correctly.
 
+### Setting up the web server instance to use server side PHP logic
+- Using [10] for reference.
+- Ran `sudo apt-get update`
+- Ran `sudo apt-get install php8.1-fpm -y`
+- Ran `sudo systemctl status php8.1-fpm`
+- Confirmed it installed, no errors and the service seems to be running.
+- changed cropped.html to cropped.php and edited the contents to look like...
+
+```text
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Gallery</title>
+    <style>
+        img {
+            max-width: 100%;
+            height: auto;
+            margin: 10px;
+        }
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Image Gallery</h1>
+    <div class="gallery">
+        <?php
+        $dir = 'images/';
+        $images = glob($dir . '*.{jpg,jpeg,png,gif}', GLOB_BRACE);
+        
+        foreach($images as $image) {
+            echo '<img src="' . $image . '" alt="Image">';
+        }
+        ?>
+    </div>
+</body>
+</html>
+
+```
+
+- Restarted nginx and php service.
+- Navigated to the site, and now when I click the link it downloads the php file instead of displaying.
+- Based on [10] I need to do more work within the nginx config file.
+
 ### Notes/lessons learned
 
 ## References
@@ -712,3 +760,6 @@ https://superuser.com/questions/1566901/how-do-i-connect-to-sftp-with-provided-s
 
 [9] installing docker on ubuntu
 https://docs.docker.com/engine/install/ubuntu/
+
+[10] What I used to get PHP working
+https://www.theserverside.com/blog/Coffee-Talk-Java-News-Stories-and-Opinions/Nginx-PHP-FPM-config-example
