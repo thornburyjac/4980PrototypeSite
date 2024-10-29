@@ -455,7 +455,6 @@ server {
 
 this is what the config file looks like
 ```text
-
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
@@ -504,7 +503,7 @@ server {
 ### Notes/lessons learned
 
 
-
+```
     ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
     ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
     ssl_client_certificate /home/ubuntu/testclientcert/testuser.crt;
