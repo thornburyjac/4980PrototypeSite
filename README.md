@@ -500,9 +500,6 @@ server {
 
 - And the site structure is all changed so I need to restructure it, update all the links, then I will add a new version in the websitefiles directory in this repo.
 
-### Notes/lessons learned
-
-
 ```
     ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
     ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
@@ -729,7 +726,23 @@ sudo apt-get update
 - Navigated to the site, and now when I click the link it downloads the php file instead of displaying.
 - Based on [10] I need to do more work within the nginx config file.
 
-### Notes/lessons learned
+### Setting up the client cert on a phone
+- I tried using the same pfx file that I used on my computer, but that does not seem to work.
+- When I try to install it on my phone, it prompts me for a password which I remember setting but nothing seems to work.
+- Similar outcomes on my group members phones.
+- After some research found this [11]
+- On the web server, ran this command `openssl pkcs12 -export -legacy -out phonetest.pfx -inkey testuser.key -in testuser.crt -certfile myca.crt`
+- Entered the password for testuser.key
+- Did not set a password for the output file.
+- Now I have phonetest.pfx.
+- As you can see, the only difference from my previous command that produced testuser.pfx was I added the -legacy option.
+- Per my [11] source...
+
+In the legacy mode, the default algorithm for certificate encryption is RC2_CBC or 3DES_CBC depending on whether the RC2 cipher is enabled in the build. The default algorithm for private key encryption is 3DES_CBC. If the legacy option is not specified, then the legacy provider is not loaded and the default encryption algorithm for both certificates and private keys is AES_256_CBC with PBKDF2 for key derivation.
+
+- So based on that, it seems for the phones we tested they could not install the certificate if it was encrypted using the ciphers openssl uses without the -legacy option. When the -legacy option is set, the ciphers used create a pfx file that my phone at least can import.
+- Tested the site. I was able to access both the landing page and the restricted section using my phone.
+- Still need to fix the images page to scale using grid, but apart from that the client cert is working on a phone.
 
 ## References
 
@@ -762,3 +775,6 @@ https://docs.docker.com/engine/install/ubuntu/
 
 [10] What I used to get PHP working
 https://www.theserverside.com/blog/Coffee-Talk-Java-News-Stories-and-Opinions/Nginx-PHP-FPM-config-example
+
+[11] issue with importing certs on android
+https://stackoverflow.com/questions/71872900/installing-pcks12-certificate-in-android-wrong-password-bug
