@@ -744,6 +744,200 @@ In the legacy mode, the default algorithm for certificate encryption is RC2_CBC 
 - Tested the site. I was able to access both the landing page and the restricted section using my phone.
 - Still need to fix the images page to scale using grid, but apart from that the client cert is working on a phone.
 
+### Reproducing containerization issues
+- Ran command `docker run -d --name nginx-container -e TZ=UTC -p 8080:80 ubuntu/nginx:1.18-22.04_beta`
+- Ran command `docker exec -it nginx-container /bin/bash`
+- The first command runs a test container using a preset image from dockerhub ubuntu/nginx:1.18-22.04_beta
+- The second command allowed me to look around the containers files.
+- It seems promising, looks more similar than the preset nginx image from dockerhub that uses alpine linux.
+- Ran command `sudo docker ps -a` to view running containers.
+- Ran command `docker stop $(docker ps -a -q)` in a root shell to stop all containers
+- Ran command `docker rm $(docker ps -a -q)` in a root shell to remove all containers
+- Created this Dockerfile in a directory on the AWS instance. All the necessary files, unless I am missing one, are in the directory with the Dockerfile like the site files and the config files and whatnot.
+- Ran command `sudo docker build -t tester .` This should attempt to build an image called tester using the Dockerfile in the directory we are running the command in per the "."
+- No errors.
+- Ran command `sudo docker image ls`
+
+ubuntu@4980webserv:~/dockertest$ sudo docker image ls
+REPOSITORY     TAG               IMAGE ID       CREATED          SIZE
+tester         latest            c88352f51439   53 seconds ago   385MB
+ubuntu/nginx   1.18-22.04_beta   06f75a4c4bdf   7 weeks ago      149MB
+hello-world    latest            d2c94e258dcb   18 months ago    13.3kB
+ubuntu@4980webserv:~/dockertest$
+
+- Now I just need to run a container from this image on the AWS instance.
+- Ran command...
+
+```text
+docker run -d \
+  --name site-container \
+  -p 80:80 \
+  -p 443:443 \
+  -p 444:444 \
+  tester
+```
+So the name of the container is site container. It exposes all the ports necessary for my configuration. The last line specifies the image to use for the container.
+# IN FUTURE YOU NEED TO ADD SOME STUFF TO SETUP THE LINK BETWEEN THE FOLDERS THAT WILL HOLD THE DEATH STAR IMAGES
+
+- Error...
+
+```text
+9f64252a584d08538657c74bc521e5b2595bd9b1ba411cb510fac94ef154b608
+docker: Error response from daemon: driver failed programming external connectivity on endpoint site-container (fb0a419ea60a213f4e5ab139941def448b22f589684e5fba63320d2f9d4cad4f): failed to bind port 0.0.0.0:80/tcp: Error starting userland proxy: listen tcp4 0.0.0.0:80: bind: address already in use.
+
+```
+
+- Since I am on the AWS instance, nginx is already looking at those ports. Might need to create a new instance. Or I could just change the ports too...
+
+```text
+sudo docker run -d \
+  --name site-container \
+  -p 80:8080 \
+  -p 443:4443 \
+  -p 444:4444 \
+  tester
+```
+
+- Tested the above command. Similar error referencing 443 instead of 80.
+- Ran command `sudo systemctl stop nginx.service`. Maybe just stopping nginx for now will allow me to do this. tried...
+
+```text
+sudo docker run -d \
+  --name site-container \
+  -p 80:80 \
+  -p 443:443 \
+  -p 444:444 \
+  tester
+```
+
+- So command runs, and it gives me the hash like the container ran, but then when I check I get this...
+
+```text
+ubuntu@4980webserv:~/dockertest$ sudo docker ps -a
+CONTAINER ID   IMAGE     COMMAND                  CREATED          STATUS                      PORTS     NAMES
+4744c379ec7d   tester    "/docker-entrypoint.…"   27 seconds ago   Exited (1) 26 seconds ago             site-container
+
+```
+
+- Ran command `sudo docker logs -f site-container`
+
+```text
+ubuntu@4980webserv:~/dockertest$ sudo docker logs -f site-container
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+/docker-entrypoint.sh: Configuration complete; ready for start up
+nginx: [emerg] SSL_CTX_load_verify_locations("/home/ubuntu/testclientcert/testuser.crt") failed (SSL: error:80000002:system library::No such file or directory:calling fopen(/home/ubuntu/testclientcert/testuser.crt, r) error:10000080:BIO routines::no such file error:05880002:x509 certificate routines::system lib)
+
+```
+- I forgot, in the config file it is looking for /home/ubuntu/testclientcert/testuser.crt for the user client cert auth, but I did not put that in my Dockerfile. Rectified and tried again.
+- Setup this Dockerfile...
+
+```text
+# environment setup
+FROM ubuntu/nginx:1.18-22.04_beta
+RUN apt-get update
+RUN apt-get install php8.1-fpm -y
+RUN rm /etc/nginx/sites-available/default
+COPY default /etc/nginx/sites-available/
+COPY nginx-selfsigned.crt /etc/ssl/certs/
+COPY nginx-selfsigned.key /etc/ssl/private/
+RUN mkdir -p /home/ubuntu/testclientcert
+COPY testuser.crt /home/ubuntu/testclientcert/
+
+# put the site on there and make sure the perms are good
+COPY html /usr/share/nginx/html
+RUN chown -R www-data:www-data /usr/share/nginx/html
+RUN chmod -R 750 /usr/share/nginx/html
+
+# expose all the ports needed
+EXPOSE 80
+EXPOSE 443
+EXPOSE 444
+```
+
+- When I run the container I still get the same issue, it looks like it starts but the site does not work and the container is stopped.
+- Changed the default config file to look like ...
+
+```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+        location / {
+                root /var/www/html;
+                try_files $uri $uri/ =404;
+        }
+}
+
+server {
+    listen 444 ssl;
+    listen [::]:444 ssl;
+    server_name _;
+
+    root /var/www/html/authreq;
+
+    index obiwan.html;
+
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_client_certificate /etc/ssl/certs/testuser.crt;
+    ssl_verify_client on;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location ~ \.php$ {
+    include snippets/fastcgi-php.conf;
+
+    # Nginx php-fpm sock config:
+    fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+    # Nginx php-cgi config :
+    # Nginx PHP fastcgi_pass 127.0.0.1:9000;
+  }
+}
+
+```
+As you can see now the user cert should be in /etc/ssl/certs/
+
+- I changed the dockerfile to put the testuser.crt in the /etc/ssl/certs/ directory instead. Tried again.
+- I am a fucking idiot. I am changing the Dockerfile but not rebuilding the image.
+- Ran command `sudo docker rmi tester` to remove the image
+- Ran command `sudo docker build -t tester .` to build another with the Dockerfile.
+- Ran container and checked logs, see output...
+
+```text
+ubuntu@4980webserv:~/dockertest$ sudo docker run -d \
+  --name site-container \
+  -p 80:80 \
+  -p 443:443 \
+  -p 444:444 \
+  tester
+951752466f40740720ec4a3826c4998f8f4d5c036ae47a8ff9f72e2c4267df4f
+ubuntu@4980webserv:~/dockertest$ sudo docker logs -f site-container
+/docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+/docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+/docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+/docker-entrypoint.sh: Configuration complete; ready for start up
+```
+
+- Now I am getting all sorts of nginx errors. So the container is running but the config to put up the site is porked.
+- Making progress. Will come back tomorrow.
+
 ## References
 
 [1] Might help me solve the issue where the landing page is prompting for authentication where it should only be the second page.
@@ -778,3 +972,6 @@ https://www.theserverside.com/blog/Coffee-Talk-Java-News-Stories-and-Opinions/Ng
 
 [11] issue with importing certs on android
 https://stackoverflow.com/questions/71872900/installing-pcks12-certificate-in-android-wrong-password-bug
+
+[12] ubuntu with nginx on it preset image 
+https://hub.docker.com/r/ubuntu/nginx
