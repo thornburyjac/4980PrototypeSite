@@ -1086,6 +1086,18 @@ root          87  0.0  0.2   7064  2816 pts/0    R+   12:08   0:00 ps aux
 - I changed the Dockerfile to have RUN /etc/init.d/php8.1-fpm start and I still get bad gateway when accessing the php file.
 - I can still access the container though, run `/etc/init.d/php8.1-fpm start` and see that php is now started.
 - So for some reason, `/etc/init.d/php8.1-fpm start` will work just in the running container, but does not seem to work when using `RUN /etc/init.d/php8.1-fpm start` in the Dockerfile.
+- After some digging, remember that you had that little command at the end of your Dockerfile for Kayleighs project, it would look something like this for php...
+
+```text
+# PHP
+# Set the default command to run PHP-FPM in the foreground
+CMD ["php-fpm", "-F"]
+
+# From kayleighs class project Dockerfile
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+- I need to try this or research more into it....
 
 Dockerfile
 ```text
