@@ -1098,21 +1098,108 @@ CMD ["nginx", "-g", "daemon off;"]
 ```
 
 - I need to try this or research more into it....
-- 
-
-# TODO either get `CMD ["php-fpm", "-F"]` working OR in the Dockerfile copy over a bash script that runs `/etc/init.d/php8.1-fpm start`
+- So, upon more research I added this `CMD service php8.1-fpm start && nginx -g "daemon off;"` to the bottom of the Dockerfile and that seems to work. There are more graceful ways to do it I am sure and if I have time I will refine it but this works for now.
+- To summarize...
 
 Dockerfile
 ```text
+# environment setup. All these are dependencies, either files or services, needed
+FROM ubuntu/nginx:1.18-22.04_beta
+RUN apt-get update
+RUN apt-get install php8.1-fpm -y
+RUN rm /etc/nginx/sites-available/default
+COPY .htpasswd /etc/nginx/
+COPY default /etc/nginx/sites-available/
+COPY nginx-selfsigned.crt /etc/ssl/certs/
+COPY nginx-selfsigned.key /etc/ssl/private/
+COPY testuser.crt /etc/ssl/certs/
+RUN rm -R /var/www/html/*
+
+# put the site files on there and make sure the perms are good
+COPY html /var/www/html
+RUN chown -R www-data:www-data /var/www/html
+RUN chmod -R 750 /var/www/html
+
+# expose all the ports needed for this configuration
+EXPOSE 80
+EXPOSE 443
+EXPOSE 444
+
+# ensure php AND nginx are running when the container starts
+CMD service php8.1-fpm start && nginx -g "daemon off;"
 ```
 
 Nginx config
 ```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+        location / {
+                root /var/www/html;
+                try_files $uri $uri/ =404;
+        }
+}
+
+server {
+    listen 444 ssl;
+    listen [::]:444 ssl;
+    server_name _;
+
+    root /var/www/html/authreq;
+
+    index obiwan.html;
+
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_client_certificate /etc/ssl/certs/testuser.crt;
+    ssl_verify_client on;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location ~ \.php$ {
+    include snippets/fastcgi-php.conf;
+
+    # Nginx php-fpm sock config:
+    fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+    # Nginx php-cgi config :
+    # Nginx PHP fastcgi_pass 127.0.0.1:9000;
+  }
+}
 ```
 
 List of all the dependencies in my docker folder for reference.
 ```text
+ubuntu@4980webserv:~/dockertest$ ls -lah
+total 36K
+drwxrwxr-x 3 ubuntu ubuntu 4.0K Nov  6 20:33 .
+drwxr-x--- 6 ubuntu ubuntu 4.0K Nov  6 20:33 ..
+-rw-rw-r-- 1 ubuntu ubuntu   45 Nov  5 18:27 .htpasswd
+-rw-rw-r-- 1 ubuntu ubuntu  793 Nov  6 20:33 Dockerfile
+-rw-rw-r-- 1 ubuntu ubuntu 1.2K Nov  5 19:08 default
+drwx------ 4 ubuntu ubuntu 4.0K Oct 17 12:58 html
+-rw-rw-r-- 1 ubuntu ubuntu 1.3K Nov  5 18:24 nginx-selfsigned.crt
+-rw-rw-r-- 1 ubuntu ubuntu 1.7K Nov  5 18:25 nginx-selfsigned.key
+-rw-rw-r-- 1 ubuntu ubuntu 1.5K Nov  5 18:26 testuser.crt
 ```
+html is a directory with the site files. default is the nginx config. the Dockerfile is shown above. the nginx-selfsigned files are for serving the site using https. testuser.crt is for client cert authentication. .htpasswd is for nginx simple authentication.
+
+# TODO need to update the image with the newest site files. It currently is using the old php file that isnt styled right.
 
 ### Docker commands I use a lot
 sudo docker stop site-container
@@ -1140,6 +1227,9 @@ sudo docker ps -a
 sudo docker logs -f site-container
 
 sudo docker exec -it site-container /bin/bash
+
+### Lessons learned
+- BTW /etc/init.d/php8.1-fpm start or /etc/init.d/php8.1-fpm restart is how you handle starting php service when you have a container that cant use systemctl. I imagine similar scripts exists for other services.
 
 ## References
 
