@@ -938,6 +938,194 @@ ubuntu@4980webserv:~/dockertest$ sudo docker logs -f site-container
 - Now I am getting all sorts of nginx errors. So the container is running but the config to put up the site is porked.
 - Making progress. Will come back tomorrow.
 
+### More docker troubleshooting
+- Alright, after some fiddling here is where i am at.
+
+Dockerfile
+```text
+# environment setup
+FROM ubuntu/nginx:1.18-22.04_beta
+RUN apt-get update
+RUN apt-get install php8.1-fpm -y
+RUN rm /etc/nginx/sites-available/default
+COPY default /etc/nginx/sites-available/
+COPY nginx-selfsigned.crt /etc/ssl/certs/
+COPY nginx-selfsigned.key /etc/ssl/private/
+COPY testuser.crt /etc/ssl/certs/
+RUN rm -R /var/www/html/*
+
+# put the site on there and make sure the perms are good
+COPY html /var/www/html
+RUN chown -R www-data:www-data /var/www/html
+RUN chmod -R 750 /var/www/html
+
+# expose all the ports needed
+EXPOSE 80
+EXPOSE 443
+EXPOSE 444
+```
+
+nginx config file in the container
+```text
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    # Redirect all HTTP traffic to HTTPS
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name _;
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+
+    # Other SSL configuration directives can go here
+
+        location / {
+                root /var/www/html;
+                try_files $uri $uri/ =404;
+        }
+}
+
+server {
+    listen 444 ssl;
+    listen [::]:444 ssl;
+    server_name _;
+
+    root /var/www/html/authreq;
+
+    index obiwan.html;
+
+
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt;
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key;
+    ssl_client_certificate /etc/ssl/certs/testuser.crt;
+    ssl_verify_client on;
+    auth_basic "Restricted";
+    auth_basic_user_file /etc/nginx/.htpasswd;
+
+    location ~ \.php$ {
+    include snippets/fastcgi-php.conf;
+
+    # Nginx php-fpm sock config:
+    fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+    # Nginx php-cgi config :
+    # Nginx PHP fastcgi_pass 127.0.0.1:9000;
+  }
+}
+```
+
+- When I create an image using that Dockerfile, and run this command...
+
+```text
+sudo docker run -d \
+  --name site-container \
+  -p 80:80 \
+  -p 443:443 \
+  -p 444:444 \
+  tester
+```
+
+- I am able to start the container, it runs, and I am able to go to 44.207.127.108 in my browser and get the landing page. I then hit the link, enter the user/password/cert, and I get nginx forbidden error.
+- Checked error logs, it seems I forgot the .htpasswd file.
+- Updated Dockerfile to copy the .htpasswd file over.
+- Now when I build the image and run the container, I can access the site, I can hit the link, it takes me to the restricted area with no auth prompt, and when I try to view the images I get bad gateway.
+- Accessed container files once more to troubleshoot with `sudo docker exec -it site-container /bin/bash`
+- See error log...
+
+```text
+root@02d53af3213c:/var/log/nginx# cat error.log
+2024/11/06 11:35:54 [error] 18#18: *4 open() "/var/www/html/authreq/favicon.ico" failed (2: No such file or directory), client: 74.83.114.61, server: _, request: "GET /favicon.ico HTTP/1.1", host: "44.207.127.108:444", referrer: "https://44.207.127.108:444/"
+2024/11/06 11:35:57 [crit] 18#18: *4 connect() to unix:/run/php/php8.1-fpm.sock failed (2: No such file or directory) while connecting to upstream, client: 74.83.114.61, server: _, request: "GET /cropped.php HTTP/1.1", upstream: "fastcgi://unix:/run/php/php8.1-fpm.sock:", host: "44.207.127.108:444", referrer: "https://44.207.127.108:444/"
+2024/11/06 11:36:12 [error] 18#18: *4 open() "/var/www/html/authreq/favicon.ico" failed (2: No such file or directory), client: 74.83.114.61, server: _, request: "GET /favicon.ico HTTP/1.1", host: "44.207.127.108:444", referrer: "https://44.207.127.108:444/"
+2024/11/06 11:36:27 [crit] 18#18: *4 connect() to unix:/run/php/php8.1-fpm.sock failed (2: No such file or directory) while connecting to upstream, client: 74.83.114.61, server: _, request: "GET /cropped.php HTTP/1.1", upstream: "fastcgi://unix:/run/php/php8.1-fpm.sock:", host: "44.207.127.108:444", referrer: "https://44.207.127.108:444/"
+2024/11/06 11:36:27 [error] 18#18: *4 open() "/var/www/html/authreq/favicon.ico" failed (2: No such file or directory), client: 74.83.114.61, server: _, request: "GET /favicon.ico HTTP/1.1", host: "44.207.127.108:444", referrer: "https://44.207.127.108:444/cropped.php"
+```
+
+- I forgot to setup PHP in the Dockerfile? No its one of the first commands ran.
+- Ran the container again, this time I get prompted for authentication so I do think that is working and before I was not prompted because some session crap or cookie or something.
+- Same issue with the php.
+- When I access the container with that exec command, and run `ps aux` to see services running I see this...
+
+```text
+root@863717729afb:~# ps aux
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  1.4  56452 14208 ?        Ss   11:47   0:00 nginx: master process nginx -g daemon off;
+www-data      18  0.0  0.9  56928  8828 ?        S    11:47   0:00 nginx: worker process
+root          19  0.0  0.3   4628  3456 pts/0    Ss   11:49   0:00 /bin/bash
+root          53  0.0  0.3   7064  2944 pts/0    R+   12:03   0:00 ps aux
+
+```
+
+- I dont see php running.
+- Ran command `/etc/init.d/php8.1-fpm start`. This is because the running container cannot use systemctl for reasons I'm not sure of but have seen articles talking about why.
+- That command uses the script in init.d to start php. Now when I run ps aux I see...
+
+```text
+root@863717729afb:~# sudo /etc/init.d/php8.1-fpm start
+bash: sudo: command not found
+root@863717729afb:~# /etc/init.d/php8.1-fpm start
+root@863717729afb:~# ps aux
+USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root           1  0.0  1.4  56452 14208 ?        Ss   11:47   0:00 nginx: master process nginx -g daemon off;
+www-data      18  0.0  0.9  56928  8828 ?        S    11:47   0:00 nginx: worker process
+root          19  0.0  0.3   4628  3456 pts/0    Ss   11:49   0:00 /bin/bash
+root          84  0.0  0.6 199716  6156 ?        Ss   12:08   0:00 php-fpm: master process (/etc/php/8.1/fpm/php-fpm.conf)
+www-data      85  0.0  0.5 199716  5652 ?        S    12:08   0:00 php-fpm: pool www
+www-data      86  0.0  0.5 199716  5652 ?        S    12:08   0:00 php-fpm: pool www
+root          87  0.0  0.2   7064  2816 pts/0    R+   12:08   0:00 ps aux
+
+```
+
+- Might need to work this into the Dockerfile, now I will test.
+- HUZZAH
+- I changed the Dockerfile to have RUN /etc/init.d/php8.1-fpm start and I still get bad gateway when accessing the php file.
+- I can still access the container though, run `/etc/init.d/php8.1-fpm start` and see that php is now started.
+- So for some reason, `/etc/init.d/php8.1-fpm start` will work just in the running container, but does not seem to work when using `RUN /etc/init.d/php8.1-fpm start` in the Dockerfile.
+
+Dockerfile
+```text
+```
+
+Nginx config
+```text
+```
+
+List of all the dependencies in my docker folder for reference.
+```text
+```
+
+### Docker commands I use a lot
+sudo docker stop site-container
+
+sudo docker rm site-container
+
+sudo docker rmi tester
+
+sudo docker build -t tester .
+
+**Run the container**
+```
+sudo docker run -d \
+  --name site-container \
+  -p 80:80 \
+  -p 443:443 \
+  -p 444:444 \
+  tester
+```
+
+sudo docker images
+
+sudo docker ps -a
+
+sudo docker logs -f site-container
+
+sudo docker exec -it site-container /bin/bash
+
 ## References
 
 [1] Might help me solve the issue where the landing page is prompting for authentication where it should only be the second page.
