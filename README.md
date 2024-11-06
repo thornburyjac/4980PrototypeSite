@@ -1098,6 +1098,9 @@ CMD ["nginx", "-g", "daemon off;"]
 ```
 
 - I need to try this or research more into it....
+- 
+
+# TODO either get `CMD ["php-fpm", "-F"]` working OR in the Dockerfile copy over a bash script that runs `/etc/init.d/php8.1-fpm start`
 
 Dockerfile
 ```text
