@@ -1199,7 +1199,62 @@ drwx------ 4 ubuntu ubuntu 4.0K Oct 17 12:58 html
 ```
 html is a directory with the site files. default is the nginx config. the Dockerfile is shown above. the nginx-selfsigned files are for serving the site using https. testuser.crt is for client cert authentication. .htpasswd is for nginx simple authentication.
 
-# TODO need to update the image with the newest site files. It currently is using the old php file that isnt styled right.
+### Removing the placeholder images from the site, and then simulating putting in our images we will get test day
+
+Dockerfile
+```
+# environment setup. All these are dependencies, either files or services, needed
+FROM ubuntu/nginx:1.18-22.04_beta
+RUN apt-get update
+RUN apt-get install php8.1-fpm -y
+RUN rm /etc/nginx/sites-available/default
+COPY .htpasswd /etc/nginx/
+COPY default /etc/nginx/sites-available/
+COPY nginx-selfsigned.crt /etc/ssl/certs/
+COPY nginx-selfsigned.key /etc/ssl/private/
+COPY testuser.crt /etc/ssl/certs/
+RUN rm -R /var/www/html/*
+
+# put the site files on there and make sure the perms are good
+COPY html /var/www/html
+RUN chown -R www-data:www-data /var/www/html
+RUN chmod -R g+s /var/www/html
+RUN chmod -R 770 /var/www/html
+
+# expose all the ports needed for this configuration
+EXPOSE 80
+EXPOSE 443
+EXPOSE 444
+
+# ensure php AND nginx are running when the container starts
+CMD service php8.1-fpm start && nginx -g "daemon off;"
+```
+All I added was that chmod g+s line, so that when the images are dumped into the images folder, they will be owned by ubuntu but the group that owns them will be www-data, which will allow nginx to display the new images with no perms issues. I also set the permissions to 770 so that the www-data user and group has all the access to the files.
+
+Command I used to run the new container from the image the above dockerfile creates
+```
+sudo docker run -d \
+  --name site-container \
+  -p 80:80 \
+  -p 443:443 \
+  -p 444:444 \
+  -v /home/ubuntu/images:/var/www/html/authreq/images \
+  tester
+```
+That -v option sets the local directory /home/ubuntu/images to replicate to /var/www/html/authreq/images on the container.
+
+Script to transfer the files from the laptop to the EC2 instance running the container
+```
+#!/bin/bash
+
+sftp -oIdentityFile=/home/thornbja/.ssh/prototype4980key.pem ubuntu@44.207.127.108 <<EOF
+put -r test* /home/ubuntu/images
+exit
+EOF
+```
+This script uses the ssh key to setup an sftp session and dump all the image files into the folder on the EC2 instance that replicates to the container 
+
+So now you should be able to create the image using the dockerfile (that has no images), run the container from the image, and then use the script to dump images into whatever folder you set to replicate to the container. Any image that gets put into that folder with the gid bit set will give perms to anyone in the www-data group.
 
 ### Docker commands I use a lot
 sudo docker stop site-container
