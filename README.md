@@ -1285,6 +1285,11 @@ sudo docker exec -it site-container /bin/bash
 
 ### Lessons learned
 - BTW /etc/init.d/php8.1-fpm start or /etc/init.d/php8.1-fpm restart is how you handle starting php service when you have a container that cant use systemctl. I imagine similar scripts exists for other services.
+- Should probably be more lessons learned in this section. I neglected this section throughout the process documentation, so that is one lesson.
+- Need to be more organization concious when handling the github. With only 2 people it got out of hand real quick.
+
+### Deleting the stack
+- Went to AWS cloudformation and deleted the stack, confirmed all resources in AWS were removed.
 
 ## References
 
