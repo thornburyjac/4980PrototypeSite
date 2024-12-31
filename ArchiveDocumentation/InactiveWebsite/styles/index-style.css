@@ -1,0 +1,29 @@
+body {
+    width: 100%;
+}
+.grid {
+    width: 95%;
+    display: grid;
+    grid-template-areas: 
+    "b"
+    "h"
+    "v"
+    "v"
+    "l";
+}
+.banner {
+    place-self: center;
+    grid-area: b;
+}
+.hello {
+    place-self: center;
+    grid-area: h;
+}
+.vid {
+    place-self: center;
+    grid-area: v;
+}
+.link {
+    place-self: center;
+    grid-area: l;
+}
